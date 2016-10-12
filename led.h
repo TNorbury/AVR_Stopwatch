@@ -44,6 +44,9 @@
 
 void led_init();
 void led_set_value(uint8_t led, uint8_t value);
+void led_turn_all_off();
+void led_enable();
+void led_disable();
 
 //------------------------------------------------------------------------------
 //      __        __          __

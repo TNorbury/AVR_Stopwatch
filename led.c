@@ -61,18 +61,66 @@ void led_set_value(uint8_t led, uint8_t value)
 {
   
   //Set the value of the given led.
-  switch (led)
+  if (RED_LED == led)
   {
-    case RED_LED:
-      PORTD &= (0xff)|(value << PORTD5);
-      break;
-    case GREEN_LED:
-      PORTD &= (0xff)|(value << PORTD6);
-      break;
-    case BLUE_LED:
-      PORTD &= (0xff)|(value << PORTB1);
-      break;
+    if (1 == value)
+    {
+      PORTD |= (1 << PORTD5);
+    }
+    else
+    {
+      PORTD &= ~(1 << PORTD5);
+    }
   }
+  else if (GREEN_LED == led)
+  {
+    if (1 == value)
+    {
+      PORTD |= (1 << PORTD6);
+    }
+    else
+    {
+      PORTD &= ~(1 << PORTD6);
+    }
+  }
+  else if (BLUE_LED == led)
+  {
+    if (1 == value)
+    {
+      PORTB |= (1 << PORTB1);
+    }
+    else
+    {
+      PORTB &= ~(1 << PORTB1);
+    }
+  }
+}
+
+//==============================================================================
+void led_turn_all_off()
+{
+  
+  //Set the value of all the LEDS to 0
+  PORTD &= ~(0x60);
+  PORTB &= ~(0x02);
+}
+
+//==============================================================================
+void led_enable()
+{
+  
+    //Switch the direction of all the leds so that they can display lights.
+    DDRD |= 0x60;
+    DDRB |= 0x02;
+}
+
+//==============================================================================
+void led_disable()
+{
+  
+  //Switch the direction of all the leds so that they can't display any lights.
+  DDRD &= ~(0x60);
+  DDRB &= ~(0x02);
 }
 
 //------------------------------------------------------------------------------

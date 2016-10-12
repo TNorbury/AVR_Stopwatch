@@ -38,6 +38,8 @@
 
 
 #include <avr/io.h>
+#include <stdint.h>
+#include <avr/interrupt.h>
 
 #include "adc.h"
 #include "led.h"
@@ -70,6 +72,8 @@
 //
 //-----------------------------------------------------------------------------
 
+void set_timer_display(uint16_t pot_value);
+
 //-----------------------------------------------------------------------------
 //      __        __          __
 //     |__) |  | |__) |    | /  `
@@ -84,6 +88,14 @@ int main(void)
   //Initialize Drivers
   adc_init();
   led_init();
+  
+  //Turn on global interrupts
+  sei();
+  
+  while (1)
+  {
+    set_timer_display(adc_get_value());
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -92,6 +104,35 @@ int main(void)
 //     |    |  \ |  \/  /~~\  |  |___
 //
 //-----------------------------------------------------------------------------
+
+//=============================================================================
+void set_timer_display(uint16_t pot_value)
+{
+    //Turn off all LEDs
+    led_turn_all_off();
+    
+    
+    //Determine the position of the pot, and turn on the correct led and display
+    //the correct time
+    if (pot_value <= 255)
+    {
+      led_set_value(RED_LED, 1);
+    }
+    else if (pot_value <= 511)
+    {
+      led_set_value(RED_LED, 1);
+      led_set_value(GREEN_LED, 1);
+    }
+    else if (pot_value <= 767)
+    {
+      led_set_value(GREEN_LED, 1);
+    }
+    else if (pot_value <= 1023)
+    {
+      led_set_value(GREEN_LED, 1);
+      led_set_value(BLUE_LED, 1);
+    }
+}
 
 //-----------------------------------------------------------------------------
 //        __   __   __
