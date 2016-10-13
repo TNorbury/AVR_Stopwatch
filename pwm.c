@@ -49,7 +49,7 @@
 //------------------------------------------------------------------------------
 
 //==============================================================================
-void pwn_init()
+void pwm_init()
 {
   //Set up TCCR0A
   TCCR0A = 0xA3;
@@ -65,7 +65,7 @@ void pwn_init()
 }
 
 //==============================================================================
-void pwn_set_value(uint8_t led, uint8_t value)
+void pwm_set_value(uint8_t led, uint8_t value)
 {
   if (RED_LED == led)
   {
@@ -82,7 +82,7 @@ void pwn_set_value(uint8_t led, uint8_t value)
 }
 
 //==============================================================================
-void pwn_get_value(uint8_t led)
+uint8_t pwm_get_value(uint8_t led)
 {
   uint8_t retval;
   

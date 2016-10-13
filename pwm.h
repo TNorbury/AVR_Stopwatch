@@ -38,9 +38,9 @@
 //
 //------------------------------------------------------------------------------
 
-void pwn_init();
-void pwn_set_value(uint8_t led, uint8_t value);
-void pwn_get_value(uint8_t led);
+void pwm_init();
+void pwm_set_value(uint8_t led, uint8_t value);
+uint8_t pwm_get_value(uint8_t led);
 
 //------------------------------------------------------------------------------
 //      __        __          __
