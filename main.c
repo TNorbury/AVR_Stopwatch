@@ -4,7 +4,7 @@
 //* Program : Program 6
 //* Class : ENGE 320
 //* Date : 10/18/16
-//* Description : Stopwatch that can hold up to 3 lap times, and display any of 
+//* Description : Stopwatch that can hold up to 3 lap times, and display any of
 //*               the lap times, or the current time, based on user selection.
 //*
 //* =============================================================
@@ -43,6 +43,8 @@
 
 #include "adc.h"
 #include "led.h"
+#include "pwm.h"
+#include "timer.h"
 
 //-----------------------------------------------------------------------------
 //      __   ___  ___         ___  __
@@ -50,6 +52,11 @@
 //     |__/ |___ |    | | \| |___ .__/
 //
 //-----------------------------------------------------------------------------
+
+#define RED_FADE 0
+#define YELLOW_FADE 1
+#define GREEN_FADE 2
+#define CYAN_FADE 3
 
 //-----------------------------------------------------------------------------
 //     ___      __   ___  __   ___  ___  __
@@ -64,6 +71,13 @@
 //      \/  /~~\ |  \ | /~~\ |__) |___ |___ .__/
 //
 //-----------------------------------------------------------------------------
+
+enum TIMERS
+{
+  TIMER_STOP_WATCH,
+  TIMER_FADE,
+  NUM_TIMERS
+};
 
 //-----------------------------------------------------------------------------
 //      __   __   __  ___  __  ___      __   ___  __
@@ -88,6 +102,8 @@ int main(void)
   //Initialize Drivers
   adc_init();
   led_init();
+  pwn_init();
+  timer_init();
   
   //Turn on global interrupts
   sei();
@@ -108,36 +124,36 @@ int main(void)
 //=============================================================================
 void set_timer_display(uint16_t pot_value)
 {
-    //Turn off all LEDs
-    led_turn_all_off();
-    
-    
-    //Determine the position of the pot, and turn on the correct led and display
-    //the correct time
-    if (pot_value <= 255)
-    {
-      led_set_value(RED_LED, 1);
-    }
-    else if (pot_value <= 511)
-    {
-      led_set_value(RED_LED, 1);
-      led_set_value(GREEN_LED, 1);
-    }
-    else if (pot_value <= 767)
-    {
-      led_set_value(GREEN_LED, 1);
-    }
-    else if (pot_value <= 1023)
-    {
-      led_set_value(GREEN_LED, 1);
-      led_set_value(BLUE_LED, 1);
-    }
+  //Turn off all LEDs
+  led_turn_all_off();
+  
+  
+  //Determine the position of the pot, and turn on the correct led and display
+  //the correct time
+  if (pot_value <= 255)
+  {
+    led_set_value(RED_LED, 1);
+  }
+  else if (pot_value <= 511)
+  {
+    led_set_value(RED_LED, 1);
+    led_set_value(GREEN_LED, 1);
+  }
+  else if (pot_value <= 767)
+  {
+    led_set_value(GREEN_LED, 1);
+  }
+  else if (pot_value <= 1023)
+  {
+    led_set_value(GREEN_LED, 1);
+    led_set_value(BLUE_LED, 1);
+  }
 }
 
 //-----------------------------------------------------------------------------
 //        __   __   __
 //     | /__` |__) /__`
 //     | .__/ |  \ .__/
-//          
+//
 //-----------------------------------------------------------------------------
 
