@@ -46,6 +46,7 @@
 #include "led.h"
 #include "pwm.h"
 #include "timer.h"
+#include "tlc.h"
 
 //-----------------------------------------------------------------------------
 //      __   ___  ___         ___  __
@@ -99,9 +100,13 @@ enum TIMERS
 {
   TIMER_STOP_WATCH,
   TIMER_FADE,
+  TIMER_DEBOUNCE,
+  TIMER_TLC,
   NUM_TIMERS
 };
 const uint8_t FADE_DELAY = 1;
+const uint8_t DEBOUNCE_DELAY = 20;
+const uint8_t TLC_DELAY = 5;
 
 uint8_t new_pot_pos, old_pot_pos = 0;
 uint8_t fade_to;
@@ -129,6 +134,10 @@ static void fade_yellow();
 static void fade_green();
 static void fade_cyan();
 
+//Functions for displaying on the TLC display
+static uint8_t decimal_to_SevSeg(uint16_t decimal, uint8_t digit);
+static void write_to_digit(uint16_t decimal, uint8_t digit, uint8_t anode);
+
 //-----------------------------------------------------------------------------
 //      __        __          __
 //     |__) |  | |__) |    | /  `
@@ -145,6 +154,7 @@ int main(void)
   led_init();
   pwm_init();
   timer_init();
+  tlc_init();
   
   
   //Turn on global interrupts
@@ -154,6 +164,7 @@ int main(void)
   {
     
     //Update the display and, if necessary, fade the lights.
+    event_timer[TIMER_STOP_WATCH] = timer_get();
     set_timer_display(adc_get_value());
     if (true == fade_flag)
     {
