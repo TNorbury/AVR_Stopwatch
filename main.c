@@ -110,13 +110,15 @@ enum TIMERS
   TIMER_FADE,
   TIMER_DEBOUNCE,
   TIMER_TLC,
+  TIMER_LAP,
   NUM_TIMERS
 };
 
-const uint16_t STOP_WATCH_DELAY = 1;
+const uint8_t STOP_WATCH_DELAY = 1;
 const uint8_t FADE_DELAY = 1;
 const uint8_t DEBOUNCE_DELAY = 20;
 const uint8_t TLC_DELAY = 5;
+const uint16_t LAP_DISPLAY_DELAY = 2000;
 
 uint8_t new_pot_pos, old_pot_pos = 0;
 uint8_t fade_to;
@@ -126,8 +128,10 @@ bool fade_flag;
 uint8_t red_fade_i, green_fade_i, blue_fade_i = 0;
 
 uint32_t stop_watch_time;
-uint32_t time_to_display;
+uint32_t time_to_display = 0;
 uint64_t event_timer[NUM_TIMERS];
+
+uint32_t lap_times[3];
 
 //-----------------------------------------------------------------------------
 //      __   __   __  ___  __  ___      __   ___  __
@@ -153,6 +157,8 @@ static uint8_t display_number(uint32_t number, uint8_t digit);
 static uint8_t decimal_to_SevSeg(uint32_t decimal, uint8_t digit);
 static void write_to_digit(uint32_t decimal, uint8_t digit, uint8_t anode);
 
+static void save_lap_time(uint32_t lap_time);
+
 static int uart_putchar(char c, FILE *stream);
 static FILE mystdout = FDEV_SETUP_STREAM(uart_putchar, NULL, _FDEV_SETUP_WRITE);
 
@@ -169,6 +175,9 @@ int main(void)
   uint8_t active_digit = 0;
   bool button[2] = {false,false};
   bool old_button[2] = {false, false};
+  bool is_started = false;
+  bool save_lap = false;
+  bool display_lap = false;
   
   //Initialize Drivers
   adc_init();
@@ -178,7 +187,7 @@ int main(void)
   tlc_init();
   buttons_init();
   
-    stdout = &mystdout;
+  stdout = &mystdout;
 
   
   //Initialize the timers
@@ -198,47 +207,88 @@ int main(void)
     button[1] = buttons_get_debounce(1, timer_get());
     
     //Look for a falling edge on both buttons
-    if ((true == button[0]) && (false == old_button[0]) && 
-        (true == button[1]) && (false == old_button[1]))
+    if ((true == button[0]) && (false == old_button[0]) &&
+    (true == button[1]) && (false == old_button[1]))
     {
       printf("Nothing will be printed");
     }
     else if ((true == button[0]) && (false == old_button[0]))
     {
-      printf("Nothing will be printed");
+      is_started = !is_started;
     }
     else if ((true == button[1]) && (false == old_button[1]))
     {
-      printf("Nothing will be printed");
+      
+      //If the stop watch isn't in start mode, don't save the lap time.
+      if (is_started)
+      {
+        save_lap = true;
+        display_lap = true;
+        event_timer[TIMER_LAP] = timer_get();
+      }
     }
     
     //Save the button value
     old_button[0] = button[0];
     old_button[1] = button[1];
-    
-    if (STOP_WATCH_DELAY <= (timer_get() - event_timer[TIMER_STOP_WATCH]))
+
+    //If the timer has started,
+    if (is_started)
     {
-      event_timer[TIMER_STOP_WATCH] = timer_get();
-      stop_watch_time ++;
-    }
-    
-    //Update the display and, if necessary, fade the lights.
-    event_timer[TIMER_STOP_WATCH] = timer_get();
-    set_timer_display(adc_get_value());
-    if (true == fade_flag)
-    {
-      //If enough time has passed, fade the lights.
-      if (FADE_DELAY <= (timer_get() - event_timer[TIMER_FADE]))
+      if (STOP_WATCH_DELAY <= (timer_get() - event_timer[TIMER_STOP_WATCH]))
       {
-        event_timer[TIMER_FADE] = timer_get();
-        fade_lights(fade_to);
+        event_timer[TIMER_STOP_WATCH] = timer_get();
+        stop_watch_time ++;
+      }
+      
+      //Take the current time and save it as a lap.
+      if (save_lap)
+      {
+        save_lap_time(stop_watch_time);
+        save_lap = false;
+      }
+      
+      //Update the display and, if necessary, fade the lights.
+      event_timer[TIMER_STOP_WATCH] = timer_get();
+      set_timer_display(adc_get_value());
+      if (true == fade_flag)
+      {
+        //If enough time has passed, fade the lights.
+        if (FADE_DELAY <= (timer_get() - event_timer[TIMER_FADE]))
+        {
+          event_timer[TIMER_FADE] = timer_get();
+          fade_lights(fade_to);
+        }
       }
     }
     
-    if (TLC_DELAY <= (timer_get() - event_timer[TIMER_TLC]))
+    //If the display_lap flag is set, and two seconds has elapsed since the flag
+    //was set, display the most recent lap. Otherwise, display the selected time
+    if (display_lap)
     {
-      event_timer[TIMER_TLC] = timer_get();
-      active_digit = display_number(stop_watch_time, active_digit);
+      
+      //If enough time has passed, turn the flag off. Otherwise, display the 
+      //most recent lap.
+      if (LAP_DISPLAY_DELAY <= (timer_get() - event_timer[TIMER_LAP]))
+      {
+        display_lap = false;
+      }
+      else
+      {
+        if (TLC_DELAY <= (timer_get() - event_timer[TIMER_TLC]))
+        {
+          event_timer[TIMER_TLC] = timer_get();
+          active_digit = display_number(lap_times[0], active_digit);
+        }
+      }
+    }
+    else
+    {
+      if (TLC_DELAY <= (timer_get() - event_timer[TIMER_TLC]))
+      {
+        event_timer[TIMER_TLC] = timer_get();
+        active_digit = display_number(time_to_display, active_digit);
+      }
     }
     
   }
@@ -269,7 +319,7 @@ static void set_timer_display(uint16_t pot_value)
     fade_to = YELLOW_FADE;
     
     //Replace w/ lap time 1
-    //time_to_display = stop_watch_time;
+    time_to_display = lap_times[0];
   }
   else if (pot_value <= 767)
   {
@@ -277,7 +327,7 @@ static void set_timer_display(uint16_t pot_value)
     fade_to = GREEN_FADE;
     
     //Replace w/ lap time 2
-    //time_to_display = stop_watch_time;
+    time_to_display = lap_times[1];
   }
   else if (pot_value <= 1023)
   {
@@ -285,7 +335,7 @@ static void set_timer_display(uint16_t pot_value)
     fade_to = CYAN_FADE;
     
     //Replace w/ lap time 3
-    //time_to_display = stop_watch_time;
+    time_to_display = lap_times[2];
   }
   
   //If the potentiometer position has changed, update the position and set a
@@ -520,6 +570,26 @@ static uint8_t decimal_to_SevSeg(uint32_t decimal, uint8_t digit)
   
   return sev_seg;
 }
+
+//=============================================================================
+static void save_lap_time(uint32_t lap_time)
+{
+  
+  //Shift the lap times down one spot
+  lap_times[2] = lap_times[1];
+  lap_times[1] = lap_times[0];
+  
+  //Add the new lap time
+  lap_times[0] = lap_time;
+  
+}
+
+
+
+
+
+
+
 
 //=============================================================================
 static int uart_putchar(char c, FILE *stream)
