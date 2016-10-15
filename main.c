@@ -41,6 +41,7 @@
 #include <avr/interrupt.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 #include "adc.h"
 #include "led.h"
@@ -152,6 +153,9 @@ static uint8_t display_number(uint32_t number, uint8_t digit);
 static uint8_t decimal_to_SevSeg(uint32_t decimal, uint8_t digit);
 static void write_to_digit(uint32_t decimal, uint8_t digit, uint8_t anode);
 
+static int uart_putchar(char c, FILE *stream);
+static FILE mystdout = FDEV_SETUP_STREAM(uart_putchar, NULL, _FDEV_SETUP_WRITE);
+
 //-----------------------------------------------------------------------------
 //      __        __          __
 //     |__) |  | |__) |    | /  `
@@ -163,7 +167,8 @@ static void write_to_digit(uint32_t decimal, uint8_t digit, uint8_t anode);
 int main(void)
 {
   uint8_t active_digit = 0;
-  
+  bool button[2] = {false,false};
+  bool old_button[2] = {false, false};
   
   //Initialize Drivers
   adc_init();
@@ -172,6 +177,9 @@ int main(void)
   timer_init();
   tlc_init();
   buttons_init();
+  
+    stdout = &mystdout;
+
   
   //Initialize the timers
   for (int i = 0; i < NUM_TIMERS; i++)
@@ -184,6 +192,29 @@ int main(void)
   
   while (1)
   {
+    
+    //Check to see if the buttons were pressed
+    button[0] = buttons_get_debounce(0, timer_get());
+    button[1] = buttons_get_debounce(1, timer_get());
+    
+    //Look for a falling edge on both buttons
+    if ((true == button[0]) && (false == old_button[0]) && 
+        (true == button[1]) && (false == old_button[1]))
+    {
+      printf("Nothing will be printed");
+    }
+    else if ((true == button[0]) && (false == old_button[0]))
+    {
+      printf("Nothing will be printed");
+    }
+    else if ((true == button[1]) && (false == old_button[1]))
+    {
+      printf("Nothing will be printed");
+    }
+    
+    //Save the button value
+    old_button[0] = button[0];
+    old_button[1] = button[1];
     
     if (STOP_WATCH_DELAY <= (timer_get() - event_timer[TIMER_STOP_WATCH]))
     {
@@ -432,40 +463,6 @@ static uint8_t display_number(uint32_t number, uint8_t digit)
   
   
   return digit;
-  ////number /= 10;
-  //
-  ////Set the 1s digit
-  //tlc_turn_off_anodes();
-  //write_to_digit(number, 0, DIGIT3_ANODE);
-  //while (TLC_DELAY >= (timer_get() - event_timer[TIMER_TLC]))
-  //{
-  //}
-  //event_timer[TIMER_TLC] = timer_get();
-  //
-  ////Set the 10s digit
-  //tlc_turn_off_anodes();
-  //write_to_digit(number, 1, DIGIT2_ANODE);
-  //while (TLC_DELAY >= (timer_get() - event_timer[TIMER_TLC]))
-  //{
-  //}
-  //event_timer[TIMER_TLC] = timer_get();
-  //
-  ////Set the 100s digit
-  //tlc_turn_off_anodes();
-  //write_to_digit(number, 2, DIGIT1_ANODE);
-  //while (TLC_DELAY >= (timer_get() - event_timer[TIMER_TLC]))
-  //{
-  //}
-  //event_timer[TIMER_TLC] = timer_get();
-  //
-  ////Set the 1000s digit
-  //tlc_turn_off_anodes();
-  //write_to_digit(number, 3, DIGIT0_ANODE);
-  //while (TLC_DELAY >= (timer_get() - event_timer[TIMER_TLC]))
-  //{
-  //}
-  //event_timer[TIMER_TLC] = timer_get();
-  
 }
 
 //=============================================================================
@@ -524,6 +521,12 @@ static uint8_t decimal_to_SevSeg(uint32_t decimal, uint8_t digit)
   return sev_seg;
 }
 
+//=============================================================================
+static int uart_putchar(char c, FILE *stream)
+{
+  //serial_write(c);
+  return 0;
+}
 //-----------------------------------------------------------------------------
 //        __   __   __
 //     | /__` |__) /__`

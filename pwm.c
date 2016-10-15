@@ -58,7 +58,7 @@ void pwm_init()
   TCCR0B = 0x01;
   
   //Set up TCCR1A for WGM
-  TCCR1A |= 0xA1;
+  TCCR1A |= 0x81;
   
   //Set up WGM and pre-scaler
   TCCR1B |= 0x09;
