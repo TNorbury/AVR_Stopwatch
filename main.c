@@ -47,6 +47,7 @@
 #include "pwm.h"
 #include "timer.h"
 #include "tlc.h"
+#include "buttons.h"
 
 //-----------------------------------------------------------------------------
 //      __   ___  ___         ___  __
@@ -170,6 +171,7 @@ int main(void)
   pwm_init();
   timer_init();
   tlc_init();
+  buttons_init();
   
   //Initialize the timers
   for (int i = 0; i < NUM_TIMERS; i++)
