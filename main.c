@@ -60,6 +60,11 @@
 #define GREEN_FADE 2
 #define CYAN_FADE 3
 
+#define DIGIT0_ANODE 1
+#define DIGIT1_ANODE 2
+#define DIGIT2_ANODE 3
+#define DIGIT3_ANODE 4
+
 //-----------------------------------------------------------------------------
 //     ___      __   ___  __   ___  ___  __
 //      |  \ / |__) |__  |  \ |__  |__  /__`
@@ -73,7 +78,8 @@
 //      \/  /~~\ |  \ | /~~\ |__) |___ |___ .__/
 //
 //-----------------------------------------------------------------------------
-
+const uint8_t SEVEN_SEG[10] = {0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d,
+0x7d, 0x07, 0x7f, 0x6f};
 
 const uint8_t FADE_SPECTRUM[250] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
@@ -104,6 +110,8 @@ enum TIMERS
   TIMER_TLC,
   NUM_TIMERS
 };
+
+const uint16_t STOP_WATCH_DELAY = 1;
 const uint8_t FADE_DELAY = 1;
 const uint8_t DEBOUNCE_DELAY = 20;
 const uint8_t TLC_DELAY = 5;
@@ -111,8 +119,12 @@ const uint8_t TLC_DELAY = 5;
 uint8_t new_pot_pos, old_pot_pos = 0;
 uint8_t fade_to;
 bool fade_flag;
-uint8_t red_fade_i, green_fade_i, blue_fade_i = 0; //Indices for the fade 
-                                                   //spectrum above     
+
+//Indices for the fade spectrum above
+uint8_t red_fade_i, green_fade_i, blue_fade_i = 0;
+
+uint32_t stop_watch_time;
+uint32_t time_to_display;
 uint64_t event_timer[NUM_TIMERS];
 
 //-----------------------------------------------------------------------------
@@ -135,8 +147,9 @@ static void fade_green();
 static void fade_cyan();
 
 //Functions for displaying on the TLC display
-static uint8_t decimal_to_SevSeg(uint16_t decimal, uint8_t digit);
-static void write_to_digit(uint16_t decimal, uint8_t digit, uint8_t anode);
+static uint8_t display_number(uint32_t number, uint8_t digit);
+static uint8_t decimal_to_SevSeg(uint32_t decimal, uint8_t digit);
+static void write_to_digit(uint32_t decimal, uint8_t digit, uint8_t anode);
 
 //-----------------------------------------------------------------------------
 //      __        __          __
@@ -148,6 +161,8 @@ static void write_to_digit(uint16_t decimal, uint8_t digit, uint8_t anode);
 //=============================================================================
 int main(void)
 {
+  uint8_t active_digit = 0;
+  
   
   //Initialize Drivers
   adc_init();
@@ -156,12 +171,23 @@ int main(void)
   timer_init();
   tlc_init();
   
+  //Initialize the timers
+  for (int i = 0; i < NUM_TIMERS; i++)
+  {
+    event_timer[i] = timer_get();
+  }
   
   //Turn on global interrupts
   sei();
   
   while (1)
   {
+    
+    if (STOP_WATCH_DELAY <= (timer_get() - event_timer[TIMER_STOP_WATCH]))
+    {
+      event_timer[TIMER_STOP_WATCH] = timer_get();
+      stop_watch_time ++;
+    }
     
     //Update the display and, if necessary, fade the lights.
     event_timer[TIMER_STOP_WATCH] = timer_get();
@@ -175,6 +201,13 @@ int main(void)
         fade_lights(fade_to);
       }
     }
+    
+    if (TLC_DELAY <= (timer_get() - event_timer[TIMER_TLC]))
+    {
+      event_timer[TIMER_TLC] = timer_get();
+      active_digit = display_number(stop_watch_time, active_digit);
+    }
+    
   }
 }
 
@@ -188,8 +221,6 @@ int main(void)
 //=============================================================================
 static void set_timer_display(uint16_t pot_value)
 {
-  //Turn off all LEDs
-  //led_turn_all_off();
   
   //Determine the position of the pot, and turn on the correct led and display
   //the correct time
@@ -197,24 +228,34 @@ static void set_timer_display(uint16_t pot_value)
   {
     new_pot_pos = 1;
     fade_to = RED_FADE;
+    time_to_display = stop_watch_time;
   }
   else if (pot_value <= 511)
   {
     new_pot_pos = 2;
     fade_to = YELLOW_FADE;
+    
+    //Replace w/ lap time 1
+    //time_to_display = stop_watch_time;
   }
   else if (pot_value <= 767)
   {
     new_pot_pos = 3;
     fade_to = GREEN_FADE;
+    
+    //Replace w/ lap time 2
+    //time_to_display = stop_watch_time;
   }
   else if (pot_value <= 1023)
   {
     new_pot_pos = 4;
     fade_to = CYAN_FADE;
+    
+    //Replace w/ lap time 3
+    //time_to_display = stop_watch_time;
   }
   
-  //If the potentiometer position has changed, update the position and set a 
+  //If the potentiometer position has changed, update the position and set a
   //flag indicating that the lights need to be faded.
   if (new_pot_pos != old_pot_pos)
   {
@@ -283,7 +324,7 @@ static void fade_red()
   pwm_set_value(GREEN_LED, FADE_SPECTRUM[green_fade_i]);
   pwm_set_value(BLUE_LED, FADE_SPECTRUM[blue_fade_i]);
   
-  //If each light has reached it's intended fade index, then turn off the fade 
+  //If each light has reached it's intended fade index, then turn off the fade
   //flag.
   if ((249 == red_fade_i) && (0 == green_fade_i) && (0 == blue_fade_i))
   {
@@ -351,6 +392,134 @@ static void fade_cyan()
   {
     fade_flag = false;
   }
+}
+
+//=============================================================================
+static uint8_t display_number(uint32_t number, uint8_t digit)
+{
+  tlc_turn_off_anodes();
+  
+  if (0 == digit)
+  {
+    
+    //display the first digit
+    write_to_digit(number, digit, DIGIT3_ANODE);
+    digit = 1;
+  }
+  else if (1 == digit)
+  {
+    
+    //Display the second digit
+    write_to_digit(number, digit, DIGIT2_ANODE);
+    digit = 2;
+  }
+  else if (2 == digit)
+  {
+    
+    //Display the third digit
+    write_to_digit(number, digit, DIGIT1_ANODE);
+    digit = 3;
+  }
+  else if (3 == digit)
+  {
+    
+    //Display the fourth digit
+    write_to_digit(number, digit, DIGIT0_ANODE);
+    digit = 0;
+  }
+  
+  
+  return digit;
+  ////number /= 10;
+  //
+  ////Set the 1s digit
+  //tlc_turn_off_anodes();
+  //write_to_digit(number, 0, DIGIT3_ANODE);
+  //while (TLC_DELAY >= (timer_get() - event_timer[TIMER_TLC]))
+  //{
+  //}
+  //event_timer[TIMER_TLC] = timer_get();
+  //
+  ////Set the 10s digit
+  //tlc_turn_off_anodes();
+  //write_to_digit(number, 1, DIGIT2_ANODE);
+  //while (TLC_DELAY >= (timer_get() - event_timer[TIMER_TLC]))
+  //{
+  //}
+  //event_timer[TIMER_TLC] = timer_get();
+  //
+  ////Set the 100s digit
+  //tlc_turn_off_anodes();
+  //write_to_digit(number, 2, DIGIT1_ANODE);
+  //while (TLC_DELAY >= (timer_get() - event_timer[TIMER_TLC]))
+  //{
+  //}
+  //event_timer[TIMER_TLC] = timer_get();
+  //
+  ////Set the 1000s digit
+  //tlc_turn_off_anodes();
+  //write_to_digit(number, 3, DIGIT0_ANODE);
+  //while (TLC_DELAY >= (timer_get() - event_timer[TIMER_TLC]))
+  //{
+  //}
+  //event_timer[TIMER_TLC] = timer_get();
+  
+}
+
+//=============================================================================
+static void write_to_digit(uint32_t decimal, uint8_t digit, uint8_t anode)
+{
+  uint8_t number_to_display;
+  
+  //Convert the digit to a seven segment value.
+  number_to_display = decimal_to_SevSeg(decimal, digit);
+
+  //Write the value to the sev_seg without the lights
+  while ((tlc_write((0x00 << 8)|number_to_display)) != 0)
+  {
+    ; // Try to write until the tlc isn't busy
+  }
+
+  tlc_turn_on_anode(anode);
+}
+
+//=============================================================================
+static uint8_t decimal_to_SevSeg(uint32_t decimal, uint8_t digit)
+{
+  uint8_t digit_value = 0;
+  uint8_t sev_seg;
+  
+  //Get the value of the specified digit
+  switch (digit)
+  {
+    case 0:
+    digit_value = decimal % 100 / 10;
+    break;
+    
+    case 1:
+    digit_value = decimal % 1000 / 100;
+    break;
+    
+    case 2:
+    digit_value = decimal % 10000 / 1000;
+    break;
+    
+    case 3:
+    digit_value = decimal % 100000 / 10000;
+    break;
+  }
+  
+  //Get the seven segment representation of the digit and return it.
+  sev_seg = SEVEN_SEG[digit_value];
+  
+  //If it's the digit in 100's place, set the 8th bit to turn on the
+  //decimal point
+  if (digit == 2)
+  {
+    sev_seg |= (1<<7);
+  }
+  
+  return sev_seg;
 }
 
 //-----------------------------------------------------------------------------
