@@ -49,6 +49,7 @@
 #include "timer.h"
 #include "tlc.h"
 #include "buttons.h"
+#include "serial.h"
 
 //-----------------------------------------------------------------------------
 //      __   ___  ___         ___  __
@@ -66,6 +67,9 @@
 #define DIGIT1_ANODE 2
 #define DIGIT2_ANODE 3
 #define DIGIT3_ANODE 4
+
+#define STARTSTOP 's'
+#define LAP 'l'
 
 //-----------------------------------------------------------------------------
 //     ___      __   ___  __   ___  ___  __
@@ -110,6 +114,7 @@ enum TIMERS
   TIMER_FADE,
   TIMER_DEBOUNCE,
   TIMER_TLC,
+  TIMER_LAP_DISPLAY,
   TIMER_LAP,
   NUM_TIMERS
 };
@@ -178,6 +183,9 @@ int main(void)
   bool is_started = false;
   bool save_lap = false;
   bool display_lap = false;
+  char my_string[MAX_SIZE];
+  char input;
+  uint16_t lap_counter = 0;
   
   //Initialize Drivers
   adc_init();
@@ -186,6 +194,7 @@ int main(void)
   timer_init();
   tlc_init();
   buttons_init();
+  serial_init();
   
   stdout = &mystdout;
 
@@ -205,6 +214,9 @@ int main(void)
     //Check to see if the buttons were pressed
     button[0] = buttons_get_debounce(0, timer_get());
     button[1] = buttons_get_debounce(1, timer_get());
+    
+    //Read the serial input
+    input = serial_read();
     
     //Look for a falling edge on both buttons
     if ((true == button[0]) && (false == old_button[0]) &&
@@ -226,11 +238,27 @@ int main(void)
       }
       
     }
-    else if ((true == button[0]) && (false == old_button[0]))
+    
+    //If the first button was pressed, or "s" was entered, start/stop the watch.
+    else if (((true == button[0]) && (false == old_button[0]))
+    || (STARTSTOP == input))
     {
       is_started = !is_started;
+      
+      //If the system was started, print a message
+      if (is_started)
+      {
+        sprintf(my_string, "\r\nStopwatch Started\r\n");
+        
+        while (serial_write_string(my_string) != 0)
+        {
+          ;
+        }
+      }
     }
-    else if ((true == button[1]) && (false == old_button[1]))
+    
+    //If the second button was pressed, or "l" was entered, record a lap.
+    else if (((true == button[1]) && (false == old_button[1])) || (LAP == input))
     {
       
       //If the stop watch isn't in start mode, don't save the lap time.
@@ -238,7 +266,7 @@ int main(void)
       {
         save_lap = true;
         display_lap = true;
-        event_timer[TIMER_LAP] = timer_get();
+        event_timer[TIMER_LAP_DISPLAY] = timer_get();
       }
     }
     
@@ -255,35 +283,48 @@ int main(void)
         stop_watch_time ++;
       }
       
-      //Take the current time and save it as a lap.
+      //Take the time since the last lap was saved and save it.
       if (save_lap)
       {
-        save_lap_time(stop_watch_time);
+        lap_counter ++;
+        
+        //Save the lap time
+        save_lap_time(timer_get() - event_timer[TIMER_LAP]);
+        
+        //Print the lap time
+        sprintf(my_string, "Lap time %u: %u\r\n", lap_counter,
+        (timer_get() - event_timer[TIMER_LAP]));
+        while (serial_write_string(my_string) != 0)
+        {
+          ;
+        }
+        
+        event_timer[TIMER_LAP] = timer_get();
         save_lap = false;
       }
       
     }
-      //Update the display and, if necessary, fade the lights.
-      event_timer[TIMER_STOP_WATCH] = timer_get();
-      set_timer_display(adc_get_value());
-      if (true == fade_flag)
+    //Update the display and, if necessary, fade the lights.
+    event_timer[TIMER_STOP_WATCH] = timer_get();
+    set_timer_display(adc_get_value());
+    if (true == fade_flag)
+    {
+      //If enough time has passed, fade the lights.
+      if (FADE_DELAY <= (timer_get() - event_timer[TIMER_FADE]))
       {
-        //If enough time has passed, fade the lights.
-        if (FADE_DELAY <= (timer_get() - event_timer[TIMER_FADE]))
-        {
-          event_timer[TIMER_FADE] = timer_get();
-          fade_lights(fade_to);
-        }
+        event_timer[TIMER_FADE] = timer_get();
+        fade_lights(fade_to);
       }
+    }
     
     //If the display_lap flag is set, and two seconds has elapsed since the flag
     //was set, display the most recent lap. Otherwise, display the selected time
     if (display_lap)
     {
       
-      //If enough time has passed, turn the flag off. Otherwise, display the 
+      //If enough time has passed, turn the flag off. Otherwise, display the
       //most recent lap.
-      if (LAP_DISPLAY_DELAY <= (timer_get() - event_timer[TIMER_LAP]))
+      if (LAP_DISPLAY_DELAY <= (timer_get() - event_timer[TIMER_LAP_DISPLAY]))
       {
         display_lap = false;
       }
