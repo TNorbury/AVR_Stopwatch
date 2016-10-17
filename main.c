@@ -337,21 +337,41 @@ int main(void)
         save_lap = false;
       }
       
-    }
-    
-    /////////////////// Update 7-seg display and LEDs ///////////////////
-    //Update the display and, if necessary, fade the lights.
-    event_timer[TIMER_STOP_WATCH] = timer_get();
-    set_timer_display(adc_get_value());
-    if (true == fade_flag)
-    {
-      //If enough time has passed, fade the lights.
-      if (FADE_DELAY <= (timer_get() - event_timer[TIMER_FADE]))
+      /////////////////// Update 7-seg display and LEDs ///////////////////
+      //Update the display and, if necessary, fade the lights.
+      event_timer[TIMER_STOP_WATCH] = timer_get();
+      set_timer_display(adc_get_value());
+      if (true == fade_flag)
       {
-        event_timer[TIMER_FADE] = timer_get();
-        fade_lights(fade_to);
+        //If enough time has passed, fade the lights.
+        if (FADE_DELAY <= (timer_get() - event_timer[TIMER_FADE]))
+        {
+          event_timer[TIMER_FADE] = timer_get();
+          fade_lights(fade_to);
+        }
       }
     }
+    
+    //Otherwise, if the watch is stopped, just display the main time
+    else
+    {
+      
+      //Passing a pot value of 0 will tell the system that the pot is in the 1st
+      //quadrent
+      set_timer_display(0);
+      
+      //Fade the LEDs to red
+      if (true == fade_flag)
+      {
+        //If enough time has passed, fade the lights.
+        if (FADE_DELAY <= (timer_get() - event_timer[TIMER_FADE]))
+        {
+          event_timer[TIMER_FADE] = timer_get();
+          fade_lights(fade_to);
+        }
+      }
+    }
+    
     
     /////////////////// Display new lap times ///////////////////
     //If the display_lap flag is set, and two seconds has elapsed since the flag
