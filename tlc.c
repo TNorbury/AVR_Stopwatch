@@ -62,7 +62,6 @@ void tlc_init()
 
   //Set up latch
   DDRC |= (1<<5);
-
 }
 
 //==============================================================================
@@ -71,7 +70,6 @@ uint8_t tlc_write(uint16_t value)
   uint8_t return_val;
   uint8_t value_low;
   uint8_t value_high;
-  
   
   if (spi_busy == 0)
   {

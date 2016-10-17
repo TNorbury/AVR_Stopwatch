@@ -213,6 +213,7 @@ int main(void)
   while (1)
   {
     
+    
     /////////////////// CHECK USER INPUT ///////////////////
     //Check to see if the buttons were pressed
     button[0] = buttons_get_debounce(0, timer_get());
@@ -304,6 +305,7 @@ int main(void)
     old_button[0] = button[0];
     old_button[1] = button[1];
 
+
     /////////////////// Check switch position ///////////////////
     if (UP == switch_get_position())
     {
@@ -317,6 +319,7 @@ int main(void)
     //If the timer has started,
     if (is_started)
     {
+      
       
       /////////////////// Increment stop watch timer ///////////////////
       if (STOP_WATCH_DELAY <= (timer_get() - event_timer[TIMER_STOP_WATCH]))
@@ -411,7 +414,6 @@ int main(void)
         active_digit = display_number(time_to_display, active_digit);
       }
     }
-    
   }
 }
 
@@ -632,7 +634,6 @@ static uint8_t display_number(uint32_t number, uint8_t digit)
     digit = 0;
   }
   
-  
   return digit;
 }
 
@@ -702,7 +703,6 @@ static void save_lap_time(uint32_t lap_time)
   
   //Add the new lap time
   lap_times[0] = lap_time;
-  
 }
 
 //=============================================================================
