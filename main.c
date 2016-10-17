@@ -59,18 +59,18 @@
 //
 //-----------------------------------------------------------------------------
 
-#define RED_FADE 0
-#define YELLOW_FADE 1
-#define GREEN_FADE 2
-#define CYAN_FADE 3
+#define RED_FADE (0)
+#define YELLOW_FADE (1)
+#define GREEN_FADE (2)
+#define CYAN_FADE (3)
 
-#define DIGIT0_ANODE 1
-#define DIGIT1_ANODE 2
-#define DIGIT2_ANODE 3
-#define DIGIT3_ANODE 4
+#define DIGIT0_ANODE (1)
+#define DIGIT1_ANODE (2)
+#define DIGIT2_ANODE (3)
+#define DIGIT3_ANODE (4)
 
-#define STARTSTOP 's'
-#define LAP 'l'
+#define STARTSTOP ('s')
+#define LAP ('l')
 
 //-----------------------------------------------------------------------------
 //     ___      __   ___  __   ___  ___  __
@@ -240,7 +240,6 @@ int main(void)
       {
         event_timer[i] = timer_get();
       }
-      
     }
     
     //If the first button was pressed, or "s" was entered, start/stop the watch.
@@ -305,6 +304,16 @@ int main(void)
     old_button[0] = button[0];
     old_button[1] = button[1];
 
+    /////////////////// Check switch position ///////////////////
+    if (UP == switch_get_position())
+    {
+      led_enable();
+    }
+    else
+    {
+      led_disable();
+    }
+
     //If the timer has started,
     if (is_started)
     {
@@ -357,7 +366,7 @@ int main(void)
     {
       
       //Passing a pot value of 0 will tell the system that the pot is in the 1st
-      //quadrent
+      //quadrant
       set_timer_display(0);
       
       //Fade the LEDs to red
