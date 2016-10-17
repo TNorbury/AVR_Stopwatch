@@ -211,6 +211,7 @@ int main(void)
   while (1)
   {
     
+    /////////////////// CHECK USER INPUT ///////////////////
     //Check to see if the buttons were pressed
     button[0] = buttons_get_debounce(0, timer_get());
     button[1] = buttons_get_debounce(1, timer_get());
@@ -225,6 +226,7 @@ int main(void)
       
       //The watch has been reset, set the watch time back to 0 and reinitialize
       //all event timers
+      lap_counter = 0;
       is_started = false;
       lap_times[0] = 0;
       stop_watch_time = 0;
@@ -254,6 +256,33 @@ int main(void)
         {
           ;
         }
+        
+        event_timer[TIMER_LAP] = timer_get();
+      }
+      
+      //Otherwise, print the final lap time, as well as the total time
+      else
+      {
+        lap_counter ++;
+        
+        //Save the lap time
+        save_lap_time(stop_watch_time);
+        
+        //Print the final lap time
+        sprintf(my_string, "Lap time %u: %u", lap_counter,
+          (timer_get() - event_timer[TIMER_LAP]));
+        while (serial_write_string(my_string) != 0)
+        {
+          ; //Wait for the serial write to not be busy
+        }
+        
+        //Print the total time
+        sprintf(my_string, "\r\nFinal Time: %u\r\nStopwatch Completed\r\n", 
+                stop_watch_time);
+        while (serial_write_string(my_string) != 0)
+        {
+          ;
+        }
       }
     }
     
@@ -277,12 +306,15 @@ int main(void)
     //If the timer has started,
     if (is_started)
     {
+      
+      /////////////////// Increment stop watch timer ///////////////////
       if (STOP_WATCH_DELAY <= (timer_get() - event_timer[TIMER_STOP_WATCH]))
       {
         event_timer[TIMER_STOP_WATCH] = timer_get();
         stop_watch_time ++;
       }
       
+      /////////////////// Save lap times ///////////////////
       //Take the time since the last lap was saved and save it.
       if (save_lap)
       {
@@ -304,6 +336,8 @@ int main(void)
       }
       
     }
+    
+    /////////////////// Update 7-seg display and LEDs ///////////////////
     //Update the display and, if necessary, fade the lights.
     event_timer[TIMER_STOP_WATCH] = timer_get();
     set_timer_display(adc_get_value());
@@ -317,6 +351,7 @@ int main(void)
       }
     }
     
+    /////////////////// Display new lap times ///////////////////
     //If the display_lap flag is set, and two seconds has elapsed since the flag
     //was set, display the most recent lap. Otherwise, display the selected time
     if (display_lap)

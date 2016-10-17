@@ -30,7 +30,7 @@
 //
 //------------------------------------------------------------------------------
 
-static volatile uint8_t busy;
+static volatile bool busy;
 static volatile uint8_t index;
 static volatile char read;
 static char my_string[MAX_SIZE];
@@ -88,6 +88,7 @@ uint8_t serial_write_string(char *in_string)
 
   if (!busy)
   {
+    busy = true;
     while(my_string[i] = in_string[i++]);
 
     return_val = 0;
@@ -137,7 +138,7 @@ ISR(USART_TX_vect)
 {
   if (my_string[index] == 0)
   {
-    busy = 0;
+    busy = false;
   }
   else
   {
