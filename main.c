@@ -210,7 +210,21 @@ int main(void)
     if ((true == button[0]) && (false == old_button[0]) &&
     (true == button[1]) && (false == old_button[1]))
     {
-      printf("Nothing will be printed");
+      
+      //The watch has been reset, set the watch time back to 0 and reinitialize
+      //all event timers
+      is_started = false;
+      lap_times[0] = 0;
+      stop_watch_time = 0;
+      lap_times[1] = 0;
+      lap_times[2] = 0;
+      
+      timer_set(0);
+      for (int i = 0; i < NUM_TIMERS; i++)
+      {
+        event_timer[i] = timer_get();
+      }
+      
     }
     else if ((true == button[0]) && (false == old_button[0]))
     {
@@ -248,6 +262,7 @@ int main(void)
         save_lap = false;
       }
       
+    }
       //Update the display and, if necessary, fade the lights.
       event_timer[TIMER_STOP_WATCH] = timer_get();
       set_timer_display(adc_get_value());
@@ -260,7 +275,6 @@ int main(void)
           fade_lights(fade_to);
         }
       }
-    }
     
     //If the display_lap flag is set, and two seconds has elapsed since the flag
     //was set, display the most recent lap. Otherwise, display the selected time
