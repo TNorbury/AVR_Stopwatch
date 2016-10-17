@@ -50,6 +50,7 @@
 #include "tlc.h"
 #include "buttons.h"
 #include "serial.h"
+#include "switch.h"
 
 //-----------------------------------------------------------------------------
 //      __   ___  ___         ___  __
@@ -195,6 +196,7 @@ int main(void)
   tlc_init();
   buttons_init();
   serial_init();
+  switch_init();
   
   stdout = &mystdout;
 
@@ -674,19 +676,13 @@ static void save_lap_time(uint32_t lap_time)
   
 }
 
-
-
-
-
-
-
-
 //=============================================================================
 static int uart_putchar(char c, FILE *stream)
 {
   //serial_write(c);
   return 0;
 }
+
 //-----------------------------------------------------------------------------
 //        __   __   __
 //     | /__` |__) /__`
